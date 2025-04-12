@@ -1,0 +1,19 @@
+Bitwise Operators
+-----------------
+
+Bitwise operators work on individual bits not on number as a whole
+
+1. | (bitwise or)  (Disjunction)
+2. & (bitwise and) (Conjunction)
+3. ~ (bitwise negation) (Negation)
+4. ^  (bitwise exclusive) (Exclusive)  : True is exactly one bit is 1 , even if both bit is 1 then result becomes false : 1^0 , 0^1 == 1 but 1^1 is 0
+4. >> (binary right shift operator)
+5. << (binary left shift operator)
+
+Note:
+Some important quick info regarding about binary shift operations
+
+1.) 22 >>1 is same as 22//2   ==> Right shift by 1 bit is dividing by 2
+2.) 22 >> 2 is same as 22//4  ==> Right shift by 1 bit is dividing by 4
+3.) 22 << 1 is same as 22*2 ==> Left Shift operator by 1  means multiply by 2
+4.) 22 << 2 is same as 22*4 ==>  Left Shift operator by 2 bits  means multiply by 4
