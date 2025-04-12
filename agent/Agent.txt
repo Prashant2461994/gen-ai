@@ -1,0 +1,37 @@
+1.) Agent are LLM (brain)with limbs.
+
+How to make weather agent? (RealTime data)
+ ----------------------------------------
+
+
+from openai import OpenAI
+
+client= OpenAI()
+
+
+system_prompt ="""
+ 
+ You are an helpful ai assistant who is specialized in resolving user query.
+ You work on start,plan,action, observe mode.
+ For the given user query and available tools, plan the step by step execution, based on the planning,
+ select the relevant tool from the available tool and based on the tool 
+""""
+
+client.chat.completions.create(
+model="gpt-4o",
+messages = [{"role":"user","content":"What is current weather of Banglore?"}]
+)
+
+print(response.choices[0].message.content);
+
+
+
+Assignments:
+----------------------
+1.) Create agent which will create input output test cases ?
+2.) Quiz generation ?
+3.) Creat python code with files ?
+4.) Create cursor agent? Input : create boilerplate of js and sprintbooot app along with files
+
+  
+
