@@ -8,6 +8,60 @@ import zipfile
 load_dotenv()
 
 client = OpenAI()
+system_prompt = """
+You are a coding assistant, who is expert in Java and Springboot.
+Your task is to help generate code or projects related to java and springboot in current directory using available tools.
+You work on start, plan, action and observe mode.
+For the given user query and available tools, plan the step by step execution and based on planning,
+select the relevant tool from the available tool  and based on tool selection you perform the action.
+
+
+Available tools:
+    -generateSpringBootApp:  is a tool which generate maven springboot applcation with all the given dependency 
+    -create_file : is a tool which add new file to exiting project
+    -edit_file : is a tool which edit existing file 
+Rules:
+    - Follow the Output JSON Format strictly .
+    - Always perform one step at a time and wait for next input
+    - Carefully analyse the user query
+
+
+
+Output JSON Format:
+    {{
+        "step": "string",
+        "content": "string",
+        "function": "The name of function if the step is action",
+         "input": {{
+          "curl_command": "optional string", // If present, file should only contain file key which contains filename
+          "file": "string OR {{ fileName: string, content: string }}s"
+         }}
+    }}
+
+Example:
+User query: Please generate a sprinboot application with springweb and H2 database
+Output: {{ "step":"plan","content": "The user is interested in generating springboot application with spring web and H2 dependencies" }}
+Output: {{ "step":"plan","content": "From available tool I should call generateSpringBoot" }}
+Output: {{ "step": "action", "function": "generateSpringBoot", "input": {{
+                                                            "curl_command": "curl https://start.spring.io/starter.zip "
+                                                                            "-d dependencies=web,h2 "
+                                                                            "-d language=java "
+                                                                            "-d type=maven-project "
+                                                                            "-d name=demoapp "
+                                                                            "-d groupId=com.example "
+                                                                            "-d artifactId=demoapp "
+                                                                            "-d packageName=com.example.demoapp "
+                                                                            "-o demoapp.zip",
+                                                            "file": "demoapp.zip"}} 
+    }}
+Output: {{ "step": "observe", "output": "Springboot demo.zip app created" }}
+Output: {{ "step": "output", "content": "Sprinboot app is created on your system successfully , Please use command <command reequired to run springboot app> locally " }}
+
+
+"""
+
+
+messages = [{"role": "system", "content": system_prompt}]
 
 
 def generateSpringBootApp(curl_command, file, extract_to=".\\"):
@@ -42,65 +96,84 @@ def generateSpringBootApp(curl_command, file, extract_to=".\\"):
         return "Could not create project due to an unexpected error"
 
 
+def create_file(filename, content):
+    try:
+        with open(filename, "w") as file:
+            file.write(content)
+        print(f"✅ File '{filename}' created successfully.")
+    except Exception as e:
+        print(f"❌ An error occurred while creating the file: {e}")
+
+
+def edit_file(filename, content):
+    try:
+        with open(filename, "w") as file:
+            file.write(content)
+        print(f"✅ File '{filename}' created successfully.")
+    except Exception as e:
+        print(f"❌ An error occurred while creating the file: {e}")
+
+
 available_tools = {
     "generateSpringBootApp": {
         "fn": generateSpringBootApp,
         "description": "Takes curl command as input and generate springboot app",
-    }
+    },
+    "createFile": {
+        "fn": create_file,
+        "description": "Adds new file to existing springboot project",
+    },
+    "editFile": {
+        "fn": create_file,
+        "description": "Edits existing file",
+    },
 }
 
-system_prompt = """
-You are a coding assistant, who is expert in Java and Springboot.
-Your task is to help generate code or projects related to java and springboot in current directory using available tools.
-You work on start, plan, action and observe mode.
-For the given user query and available tools, plan the step by step execution and based on planning,
-select the relevant tool from the available tool  and based on tool selection you perform the action.
 
+def perform_action(action_type, data):
+    match action_type:
+        case "generateSpringBootApp":
+            tool_fn = available_tools[action_type].get("fn")
+            if callable(tool_fn):
+                if "input" in data:
+                    tool_input = parsed_output.get("input", {})
+                    if "curl_command" in tool_input and "file" in tool_input:
+                        curl_command = tool_input.get("curl_command")
+                        file_name = tool_input.get("file")  # Ext
+                        output = generateSpringBootApp(curl_command, file_name)
+                        messages.append(
+                            {
+                                "role": "assistant",
+                                "content": json.dumps(
+                                    {"step": "observe", "output": output}
+                                ),
+                            }
+                        )
+            else:
+                print(f"No callable fn presnt for {action_type}")
 
-Available tools:
-    -generateSpringBootApp:  is a tool which generate maven springboot applcation with all the given dependency 
+        case "createFile":
+            tool_fn = available_tools[action_type].get("fn")
+            if callable(tool_fn):
+                if "input" in data:
+                    tool_input = parsed_output.get("input", {})
+                    if "curl_command" in tool_input and "file" in tool_input:
+                        curl_command = tool_input.get("curl_command")
+                        file_name = tool_input.get("file")  # Ext
+                        output = generateSpringBootApp(curl_command, file_name)
+                        messages.append(
+                            {
+                                "role": "assistant",
+                                "content": json.dumps(
+                                    {"step": "observe", "output": output}
+                                ),
+                            }
+                        )
+            else:
+                print(f"No callable fn presnt for {action_type}")
+        case _:
+            print(f"no founding matching action type found {action_type}")
 
-Rules:
-    - Follow the Output JSON Format.
-    - Always perform one step at a time and wait for next input
-    - Carefully analyse the user query
-
-
-
-Output JSON Format:
-    {{
-        "step": "string",
-        "content": "string",
-        "function": "The name of function if the step is action",
-         "input": {{
-            "curl_command": "string",
-            "file": "string"
-         }}
-    }}
-
-Example:
-User query: Please generate a sprinboot application with springweb and H2 database
-Output: {{ "step":"plan","content": "The user is interested in generating springboot application with spring web and H2 dependencies" }}
-Output: {{ "step":"plan","content": "From available tool I should call generateSpringBoot" }}
-Output: {{ "step": "action", "function": "generateSpringBoot", "input": {{
-                                                            "curl_command": "curl https://start.spring.io/starter.zip "
-                                                                            "-d dependencies=web,h2 "
-                                                                            "-d language=java "
-                                                                            "-d type=maven-project "
-                                                                            "-d name=demoapp "
-                                                                            "-d groupId=com.example "
-                                                                            "-d artifactId=demoapp "
-                                                                            "-d packageName=com.example.demoapp "
-                                                                            "-o demoapp.zip",
-                                                            "file": "demoapp.zip"}} 
-    }}
-Output: {{ "step": "observe", "output": "Springboot demo.zip app created" }}
-Output: {{ "step": "output", "content": "Sprinboot app is created on your system successfully , Please use command <command reequired to run springboot app> locally " }}
-
-
-"""
-
-messages = [{"role": "system", "content": system_prompt}]
 
 while True:
     user_query = input("> ")
@@ -123,11 +196,10 @@ while True:
             count = count + 1
             continue
 
-    
-
         if parsed_output.get("step") == "action":
             if parsed_output.get("function", False) != False:
                 tool_name = parsed_output.get("function")
+
                 if "input" in parsed_output:
                     tool_input = parsed_output.get("input", {})
                     if "curl_command" in tool_input and "file" in tool_input:
@@ -163,8 +235,8 @@ while True:
                 print("⚠️ Log: Parsed output does not contain the 'function' key.")
 
         if parsed_output.get("step") == "observe":
-            print(f"👀 {parsed_output.get("content")}") 
-            continue;
+            print(f"👀 {parsed_output.get("content")}")
+            continue
         if parsed_output.get("step") == "output":
-            print(f"🟢 {parsed_output.get("output")}") 
-            break;
+            print(f"🟢 {parsed_output.get("output")}")
+            break
